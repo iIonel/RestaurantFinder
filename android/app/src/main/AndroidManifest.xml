@@ -3,15 +3,6 @@
         android:label="restaurant_finder"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-
-        <!-- Adding Google Maps API Key -->
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBHYNYLTs6aJlV1P72ysrd0qIsZepEAwlE"/>
-
-        <meta-data
-            android:name="flutter.embedding.android.PlatformViews.enableHybridComposition"
-            android:value="true"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
