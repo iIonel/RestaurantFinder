@@ -1,10 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:restaurant_finder/pages/register.dart';
-
-import '../models/user.dart';
-import 'categories.dart';
+import 'package:restaurant_finder/controllers/user_controller.dart';
+import 'package:restaurant_finder/data/services/api_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../components/custom_button.dart';
+import '../components/custom_text_field.dart';
+import '../../routes/routes.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,6 +18,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final UserController _userController = UserController();
 
   @override
   void dispose() {
@@ -28,32 +31,32 @@ class _LoginPageState extends State<LoginPage> {
     String email = _emailController.text;
     String password = _passwordController.text;
 
-    String loginUrl = 'https://us-central1-foodfoodapp-423813.cloudfunctions.net/auth/login';
-    Uri uri = Uri.parse(loginUrl).replace(queryParameters: {
-      'email': email,
-      'password': password,
-    });
-
     try {
-      var response = await http.post(uri);
+      var response = await ApiService.postRequest(
+        dotenv.env['LOGIN_URL']!,
+        queryParams: {'email': email, 'password': password},
+      );
 
       if (response.statusCode == 200) {
         var responseData = json.decode(response.body);
-        print('Autentificare reușită: ${responseData}');
+        if (kDebugMode) {
+          print(responseData);
+        }
         setState(() {
-          user.setEmail(email);
+          _userController.setEmail(email);
         });
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CategoriesPage()),
-        );
+        Navigator.pushNamed(context, AppRoutes.categories);
       } else {
         var responseData = json.decode(response.body);
-        print('Eroare la autentificare: ${responseData['error']}');
+        if (kDebugMode) {
+          print('Error: ${responseData['error']}');
+        }
         _showErrorDialog(responseData['error']);
       }
     } catch (e) {
-      print('Eroare la autentificare: $e');
+      if (kDebugMode) {
+        print('Error: $e');
+      }
       _showErrorDialog('Internal server error');
     }
   }
@@ -106,58 +109,25 @@ class _LoginPageState extends State<LoginPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24.0),
-                  TextField(
+                  CustomTextField(
                     controller: _emailController,
-                    decoration: InputDecoration(
-                      hintText: 'Email',
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.9),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
+                    hintText: 'Email',
                   ),
                   const SizedBox(height: 16.0),
-                  TextField(
+                  CustomTextField(
                     controller: _passwordController,
-                    decoration: InputDecoration(
-                      hintText: 'Password',
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.9),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
+                    hintText: 'Password',
                     obscureText: true,
                   ),
                   const SizedBox(height: 24.0),
-                  ElevatedButton(
+                  CustomButton(
+                    text: 'SUBMIT',
                     onPressed: _login,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      backgroundColor: Colors.black87,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
-                    child: const Text(
-                      'SUBMIT',
-                      style: TextStyle(
-                        fontSize: 18.0,
-                        color: Colors.white,
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 16.0),
                   GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const RegisterPage()),
-                      );
+                      Navigator.pushNamed(context, AppRoutes.register);
                     },
                     child: const Text(
                       "Don't have an account?",

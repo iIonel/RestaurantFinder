@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart' as http;
-import '../models/user.dart';
+import 'package:restaurant_finder/controllers/user_controller.dart';
+import 'package:restaurant_finder/data/services/api_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import '../../data/models/user.dart';
 
 class RestaurantPage extends StatefulWidget {
   const RestaurantPage({Key? key}) : super(key: key);
@@ -15,20 +18,19 @@ class _RestaurantPageState extends State<RestaurantPage> {
   late GoogleMapController mapController;
   List<String> meals = [];
   Set<Marker> _markers = {};
+  final UserController _userController = UserController();
 
   @override
   void initState() {
     super.initState();
     _getMealsFrom();
-    user.setMeals([]);
+    _userController.setMeals([]);
   }
 
   Future<void> _getMealsFrom() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://us-central1-foodfoodapp-423813.cloudfunctions.net/getFood/getFoodByEmail')
-            .replace(queryParameters: {'email': user.getEmail()}),
-      );
+
+      final response = await ApiService.getRequest(dotenv.env['GET_FOOD_BY_EMAIL_URL']!);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -56,8 +58,8 @@ class _RestaurantPageState extends State<RestaurantPage> {
   }
 
   Future<void> _getRestaurantsForMeal(String meal) async {
-    final response = await http.get(Uri.parse(
-        'https://maps.googleapis.com/maps/api/place/textsearch/json?query=$meal&location=47.159809,27.587200&radius=1000&key=AIzaSyBHYNYLTs6aJlV1P72ysrd0qIsZepEAwlE'));
+    final response = await ApiService.getRequest(
+        '/maps/api/place/textsearch/json?query=$meal&location=47.159809,27.587200&radius=1000&key=${dotenv.env['API_KEY']}');
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -104,7 +106,7 @@ class _RestaurantPageState extends State<RestaurantPage> {
           content: Text('Meal: $meal'),
           actions: <Widget>[
             TextButton(
-              child: Text('Close'),
+              child: const Text('Close'),
               onPressed: () {
                 Navigator.of(context).pop();
               },

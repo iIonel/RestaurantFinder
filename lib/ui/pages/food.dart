@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-
-import '../models/user.dart';
+import 'package:restaurant_finder/controllers/user_controller.dart';
+import 'package:restaurant_finder/data/services/api_service.dart';
 import 'categories.dart';
 
 class FoodPage extends StatefulWidget {
   final String category;
 
-  const FoodPage({Key? key, required this.category}) : super(key: key);
+  const FoodPage({super.key, required this.category});
 
   @override
   State<FoodPage> createState() => _FoodPageState();
@@ -18,6 +18,7 @@ class _FoodPageState extends State<FoodPage> {
   List<dynamic> meals = [];
   List<dynamic> selectedMeals = [];
   Map<String, bool> addIconsVisibility = {};
+  final UserController _userController = UserController();
 
   @override
   void initState() {
@@ -26,8 +27,7 @@ class _FoodPageState extends State<FoodPage> {
   }
 
   Future<void> fetchMeals() async {
-    final String category = widget.category;
-    final response = await http.get(Uri.parse('https://www.themealdb.com/api/json/v1/1/filter.php?c=$category'));
+    final response = await ApiService.getRequest(dotenv.env['FOOD']!, queryParams: {'c': widget.category});
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
       if (responseData != null && responseData['meals'] != null) {
@@ -46,7 +46,7 @@ class _FoodPageState extends State<FoodPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Meals'),
+        title: Text('Meals - ${widget.category}'),
       ),
       body: ListView.builder(
         itemCount: meals.length,
@@ -59,12 +59,10 @@ class _FoodPageState extends State<FoodPage> {
             title: Text(mealName),
             trailing: AnimatedOpacity(
               opacity: isVisible ? 1.0 : 0.0,
-              duration: Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 300),
               child: IconButton(
-                icon: Icon(Icons.verified, color: Colors.green),
-                onPressed: () {
-
-                },
+                icon: const Icon(Icons.verified, color: Colors.green),
+                onPressed: () {},
               ),
             ),
             onTap: () {
@@ -83,25 +81,20 @@ class _FoodPageState extends State<FoodPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-
           List<String> saveMeals = [];
-          selectedMeals.forEach((meal) {
+          for (var meal in selectedMeals) {
             saveMeals.add(meal['strMeal']);
-          });
-          saveMeals.forEach((meal){
-            user.addMeal(meal);
-          });
+          }
+          for (var meal in saveMeals) {
+            _userController.addMeal(meal);
+          }
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => CategoriesPage(),
-            ),
+            MaterialPageRoute(builder: (context) => const CategoriesPage()),
           );
-
-          },
-        child: Icon(Icons.check),
+        },
         backgroundColor: Colors.green,
-
+        child: const Icon(Icons.check),
       ),
     );
   }

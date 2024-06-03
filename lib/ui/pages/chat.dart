@@ -1,13 +1,15 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../models/user.dart';
+import 'package:restaurant_finder/controllers/user_controller.dart';
+import 'package:restaurant_finder/data/services/api_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ChatPage extends StatefulWidget {
   final String otherUserName;
 
-  const ChatPage({Key? key, required this.otherUserName}) : super(key: key);
+  const ChatPage({super.key, required this.otherUserName});
 
   @override
   _ChatPageState createState() => _ChatPageState();
@@ -17,14 +19,14 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final List<Map<String, String>> _messages = [];
   late Timer _timer;
+  final UserController _userController = UserController();
 
   @override
   void initState() {
     super.initState();
     _getMessages();
 
-
-    _timer = Timer.periodic(Duration(seconds: 2), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
       _getMessages();
     });
   }
@@ -48,7 +50,7 @@ class _ChatPageState extends State<ChatPage> {
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final message = _messages[index];
-                final isSentByCurrentUser = message['sender'] == user.getEmail();
+                final isSentByCurrentUser = message['sender'] == _userController.getEmail();
 
                 return Align(
                   alignment: isSentByCurrentUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -59,7 +61,7 @@ class _ChatPageState extends State<ChatPage> {
                         color: isSentByCurrentUser ? Colors.blueAccent : Colors.grey[300],
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(12),
                       child: Text(
                         message['content']!,
                         style: TextStyle(color: isSentByCurrentUser ? Colors.white : Colors.black),
@@ -77,15 +79,13 @@ class _ChatPageState extends State<ChatPage> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    decoration: InputDecoration(hintText: 'Enter your message'),
+                    decoration: const InputDecoration(hintText: 'Enter your message'),
                     onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: () {
-                    _sendMessage();
-                  },
+                  icon: const Icon(Icons.send),
+                  onPressed: _sendMessage,
                 ),
               ],
             ),
@@ -99,30 +99,34 @@ class _ChatPageState extends State<ChatPage> {
     String message = _messageController.text.trim();
     if (message.isNotEmpty) {
       try {
-        var uri = Uri.https('us-central1-foodfoodapp-423813.cloudfunctions.net', '/send/send', {
-          'sender': user.getEmail(),
-          'receiver': widget.otherUserName,
-          'content': message,
-        });
+        var response = await ApiService.postRequest(
+          dotenv.env['SEND_MESSAGE_URL']!,
+          queryParams: {
+            'sender': _userController.getEmail(),
+            'receiver': widget.otherUserName,
+            'content': message,
+          },
+        );
 
-        var response = await http.post(uri);
         if (response.statusCode == 200) {
           _messageController.clear();
           _getMessages();
         } else {
-          print('Failed to send message: ${response.statusCode}');
+          if (kDebugMode) {
+            print('Failed to send message: ${response.statusCode}');
+          }
         }
       } catch (e) {
-        print('Network error: $e');
+        if (kDebugMode) {
+          print('Network error: $e');
+        }
       }
     }
   }
 
   void _getMessages() async {
     try {
-      var response = await http.get(
-        Uri.parse('https://us-central1-foodfoodapp-423813.cloudfunctions.net/messages'),
-      );
+      var response = await ApiService.getRequest(dotenv.env['GET_MESSAGES_URL']!);
       if (response.statusCode == 200) {
         List<dynamic> messages = jsonDecode(response.body);
         setState(() {
@@ -134,10 +138,14 @@ class _ChatPageState extends State<ChatPage> {
           }));
         });
       } else {
-        print('Failed to get messages: ${response.statusCode}');
+        if (kDebugMode) {
+          print('Failed to get messages: ${response.statusCode}');
+        }
       }
     } catch (e) {
-      print('Network error: $e');
+      if (kDebugMode) {
+        print('Network error: $e');
+      }
     }
   }
 }

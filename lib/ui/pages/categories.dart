@@ -1,19 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:restaurant_finder/pages/restaurant.dart';
-import 'package:restaurant_finder/pages/users.dart';
-import '../models/user.dart';
-import 'food.dart';
+import 'package:restaurant_finder/controllers/user_controller.dart';
+import 'package:restaurant_finder/data/services/api_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../routes/routes.dart';
 
 class CategoriesPage extends StatefulWidget {
   const CategoriesPage({super.key});
+
   @override
   State<CategoriesPage> createState() => _CategoriesPageState();
 }
 
 class _CategoriesPageState extends State<CategoriesPage> {
   List<dynamic> categories = [];
+  final UserController _userController = UserController();
 
   @override
   void initState() {
@@ -22,7 +24,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
   }
 
   Future<void> fetchCategories() async {
-    final response = await http.get(Uri.parse('https://www.themealdb.com/api/json/v1/1/categories.php'));
+    final response = await ApiService.getRequest(dotenv.env['FOOD_CATEGORIES']!);
     if (response.statusCode == 200) {
       setState(() {
         categories = json.decode(response.body)['categories'];
@@ -51,56 +53,51 @@ class _CategoriesPageState extends State<CategoriesPage> {
   }
 
   Future<void> _select(String food) async {
-    String email = user.getEmail();
-
-    String loginUrl = 'https://us-central1-foodfoodapp-423813.cloudfunctions.net/select/select';
-    Uri uri = Uri.parse(loginUrl).replace(queryParameters: {
-      'email': email,
-      'food': food,
-    });
+    String email = _userController.getEmail();
 
     try {
-      var response = await http.post(uri);
+      var response = await ApiService.postRequest(
+        dotenv.env['SELECT_URL']!,
+        queryParams: {'email': email, 'food': food},
+      );
 
       if (response.statusCode == 200) {
         var responseData = json.decode(response.body);
-        print('Selectare reușită: ${responseData}');
-        user.setEmail(email);
+        if (kDebugMode) {
+          print(responseData);
+        }
+        _userController.setEmail(email);
       } else {
         var responseData = json.decode(response.body);
-        print('Eroare la selectare: ${responseData['error']}');
+        if (kDebugMode) {
+          print('Error: ${responseData['error']}');
+        }
         _showErrorDialog(responseData['error']);
       }
     } catch (e) {
-      print('Eroare la selectare: $e');
+      if (kDebugMode) {
+        print('Error: $e');
+      }
       _showErrorDialog('Internal server error');
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home'),
+        title: const Text('Categories'),
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.person),
+            icon: const Icon(Icons.person),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => UserPage()),
-              );
+              Navigator.pushNamed(context, AppRoutes.users);
             },
           ),
           IconButton(
-            icon: Icon(Icons.restaurant),
+            icon: const Icon(Icons.restaurant),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => RestaurantPage()),
-              );
+              Navigator.pushNamed(context, AppRoutes.restaurant);
             },
           ),
         ],
@@ -110,16 +107,15 @@ class _CategoriesPageState extends State<CategoriesPage> {
         itemBuilder: (BuildContext context, int index) {
           return GestureDetector(
             onTap: () {
-              Navigator.push(
+              Navigator.pushNamed(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => FoodPage(category: categories[index]['strCategory']),
-                ),
+                AppRoutes.food,
+                arguments: categories[index]['strCategory'],
               );
             },
             child: Card(
               elevation: 4,
-              margin: EdgeInsets.all(8),
+              margin: const EdgeInsets.all(8),
               child: Column(
                 children: [
                   Image.network(
@@ -131,14 +127,14 @@ class _CategoriesPageState extends State<CategoriesPage> {
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
                       categories[index]['strCategory'],
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
@@ -147,18 +143,17 @@ class _CategoriesPageState extends State<CategoriesPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-         user.removeDuplicates();
-         //print(user.getMeals());
-         String foodreq = '';
-         List<String> foods = user.getMeals();
-         for(var i = 0; i < foods.length - 1; i++){
-           foodreq += foods[i];
-           foodreq += ", ";
-         }
-         foodreq += foods[foods.length - 1];
-         _select(foodreq);
-         },
-        child: Icon(Icons.check),
+          _userController.removeDuplicates();
+          String foodreq = '';
+          List<String> foods = _userController.getMeals();
+          for (var i = 0; i < foods.length - 1; i++) {
+            foodreq += foods[i];
+            foodreq += ", ";
+          }
+          foodreq += foods[foods.length - 1];
+          _select(foodreq);
+        },
+        child: const Icon(Icons.check),
         backgroundColor: Colors.green,
       ),
     );

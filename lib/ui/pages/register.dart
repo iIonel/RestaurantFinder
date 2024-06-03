@@ -1,8 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:restaurant_finder/data/services/api_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../components/custom_button.dart';
+import '../components/custom_text_field.dart';
 
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({Key? key}) : super(key: key);
+  const RegisterPage({super.key});
 
   @override
   _RegisterPageState createState() => _RegisterPageState();
@@ -28,19 +32,32 @@ class _RegisterPageState extends State<RegisterPage> {
     String email = _emailController.text;
     String password = _passwordController.text;
     String description = _descriptionController.text;
-    String registerUrl =
-        'https://us-central1-foodfoodapp-423813.cloudfunctions.net/auth-register?username=$username&email=$email&password=$password&description=$description';
 
     try {
-      var response = await http.post(Uri.parse(registerUrl));
+      var response = await ApiService.postRequest(
+        dotenv.env['REGISTER_URL']!,
+        queryParams: {
+          'username': username,
+          'email': email,
+          'password': password,
+          'description': description,
+        },
+      );
 
       if (response.statusCode == 200) {
-        print('Registration successful');
+        if (kDebugMode) {
+          print('Registration successful');
+        }
+        Navigator.pop(context);
       } else {
-        print('Registration failed: ${response.body}');
+        if (kDebugMode) {
+          print('Registration failed: ${response.body}');
+        }
       }
     } catch (e) {
-      print('Error during registration: $e');
+      if (kDebugMode) {
+        print('Error during registration: $e');
+      }
     }
   }
 
@@ -74,82 +91,34 @@ class _RegisterPageState extends State<RegisterPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24.0),
-                  TextField(
+                  CustomTextField(
                     controller: _usernameController,
-                    decoration: InputDecoration(
-                      hintText: 'Username',
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.9),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    keyboardType: TextInputType.text,
+                    hintText: 'Username',
                   ),
                   const SizedBox(height: 16.0),
-                  TextField(
+                  CustomTextField(
                     controller: _emailController,
-                    decoration: InputDecoration(
-                      hintText: 'Email',
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.9),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
+                    hintText: 'Email',
                   ),
                   const SizedBox(height: 16.0),
-                  TextField(
+                  CustomTextField(
                     controller: _passwordController,
-                    decoration: InputDecoration(
-                      hintText: 'Password',
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.9),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
+                    hintText: 'Password',
                     obscureText: true,
                   ),
                   const SizedBox(height: 16.0),
-                  TextField(
+                  CustomTextField(
                     controller: _descriptionController,
-                    decoration: InputDecoration(
-                      hintText: 'Description',
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.9),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
+                    hintText: 'Description',
                   ),
                   const SizedBox(height: 24.0),
-                  ElevatedButton(
+                  CustomButton(
+                    text: 'SUBMIT',
                     onPressed: _register,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      backgroundColor: Colors.black87,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
-                    child: const Text(
-                      'SUBMIT',
-                      style: TextStyle(
-                        fontSize: 18.0,
-                        color: Colors.white,
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 16.0),
                   GestureDetector(
                     onTap: () {
-                      // Navigate to the LoginPage
                       Navigator.pop(context);
                     },
                     child: const Text(

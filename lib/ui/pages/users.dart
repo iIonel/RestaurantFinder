@@ -1,11 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../models/user.dart';
-import 'chat.dart';
-import 'package:http/http.dart' as http;
+import 'package:restaurant_finder/controllers/user_controller.dart';
+import 'package:restaurant_finder/data/services/api_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../routes/routes.dart';
 
 class UserPage extends StatefulWidget {
-  const UserPage({Key? key}) : super(key: key);
+  const UserPage({super.key});
 
   @override
   _UserPageState createState() => _UserPageState();
@@ -13,6 +15,7 @@ class UserPage extends StatefulWidget {
 
 class _UserPageState extends State<UserPage> {
   late Future<List<Map<String, String>>> _matchedUsers;
+  final UserController _userController = UserController();
   late String usercom;
 
   @override
@@ -24,23 +27,25 @@ class _UserPageState extends State<UserPage> {
 
   Future<void> _match() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://us-central1-foodfoodapp-423813.cloudfunctions.net/match'),
-      );
+      final response = await ApiService.getRequest(dotenv.env['MATCH_URL']!);
       if (response.statusCode == 200) {
-        print('Matches created successfully');
+        if (kDebugMode) {
+          print('Matches created successfully');
+        }
       } else {
         throw Exception('Failed to create matches');
       }
     } catch (error) {
-      print('Error creating matches: $error');
+      if (kDebugMode) {
+        print('Error creating matches: $error');
+      }
     }
   }
 
   Future<List<Map<String, String>>> _fetchMatchedUsers() async {
-    final response = await http.get(
-      Uri.parse('https://us-central1-foodfoodapp-423813.cloudfunctions.net/matchEmail')
-          .replace(queryParameters: {'email': user.getEmail()}),
+    final response = await ApiService.getRequest(
+      dotenv.env['MATCH_EMAIL_URL']!,
+      queryParams: {'email': _userController.getEmail()},
     );
 
     if (response.statusCode == 200) {
@@ -52,7 +57,7 @@ class _UserPageState extends State<UserPage> {
         final userB = match['userB'] as String;
         final keyword = match['keyword'] as String;
 
-        final otherUser = (userA == user.getEmail()) ? userB : userA;
+        final otherUser = (userA == _userController.getEmail()) ? userB : userA;
         usercom = otherUser;
         matches.add({'user': otherUser.toString().split('@').first, 'keyword': keyword});
       }
@@ -88,13 +93,10 @@ class _UserPageState extends State<UserPage> {
                   title: Text(match['user']!),
                   subtitle: Text(match['keyword']!),
                   onTap: () {
-                    Navigator.push(
+                    Navigator.pushNamed(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => ChatPage(
-                          otherUserName: usercom,
-                        ),
-                      ),
+                      AppRoutes.chat,
+                      arguments: usercom,
                     );
                   },
                 );
